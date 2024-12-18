@@ -69,9 +69,20 @@ export async function POST(req: NextRequest) {
         - Security-focused modifiers
         - Detailed error messages
         
+        IMPORTANT REQUIREMENT:
+        - Constructor should **not** accept any parameters like 'name' or 'symbol'.
+        - Replace constructor parameters with fixed constants 'A' and 'B'.
+        
+        EXAMPLE:
+        Instead of:
+        \`constructor(string memory name, string memory symbol) ERC721(name, symbol)\`
+        
+        You must use:
+        \`constructor() ERC721("A", "B")\`
+        
         The contract must:
         - Be named 'TempContract'
-        - Extend OpenZeppelin's ERC20
+        - Extend OpenZeppelin's ERC20 or ERC721 based on the requirement
         - Include clear inline documentation
         - Follow latest Solidity best practices
         
@@ -86,6 +97,7 @@ export async function POST(req: NextRequest) {
             max_tokens: 4000
         });
 
+
         const contractCode = completion.choices[0].message?.content;
 
         if (!contractCode) {
@@ -97,12 +109,11 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({ contractCode });
 
-    } catch (error: any) {
+    } catch (error) {
         console.error('Error:', error);
         return NextResponse.json(
             {
                 error: 'Internal server error',
-                details: process.env.NODE_ENV === 'development' ? error.message : undefined
             },
             { status: 500 }
         );

@@ -20,12 +20,11 @@ export async function POST(req: NextRequest) {
             data: deploymentResult
         });
 
-    } catch (error: any) {
+    } catch (error) {
         console.error('Error:', error);
         return NextResponse.json(
             {
                 error: 'Internal server error',
-                details: process.env.NODE_ENV === 'development' ? error.message : undefined
             },
             { status: 500 }
         );

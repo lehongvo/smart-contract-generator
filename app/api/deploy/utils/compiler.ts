@@ -36,7 +36,7 @@ ${sourceCode}`;
             await execAsync('npx hardhat compile');
         } catch (compileError) {
             console.error('Compilation error:', compileError);
-            throw new Error(`Compilation failed: ${compileError.message}`);
+            throw new Error(`Compilation failed with error, Please check at console for more details`);
         }
 
         const artifactPath = path.join(

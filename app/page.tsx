@@ -5,11 +5,23 @@ import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { ArrowUpRight } from 'lucide-react';
 
+type DeploymentResultType = {
+  deploymentTransaction: {
+    hash: string;
+    gasLimit: string;
+    gasPrice: string;
+  };
+  contractAddress: string;
+  address: string;
+  abi: object[];
+}
+
 export default function ContractGenerator() {
+
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
   const [generatedContract, setGeneratedContract] = useState('');
-  const [deploymentResult, setDeploymentResult] = useState<any>(null);
+  const [deploymentResult, setDeploymentResult] = useState<DeploymentResultType | null>(null);
   const [error, setError] = useState('');
 
   const generateContract = async () => {
@@ -35,10 +47,8 @@ export default function ContractGenerator() {
       const responseText = await response.text();
       console.log('Response text:', responseText);
 
-      let data;
-      try {
-        data = JSON.parse(responseText);
-      } catch (e) {
+      const data = JSON.parse(responseText);
+      if (data.lenght === 0) {
         console.error('Failed to parse response:', responseText);
         throw new Error('Invalid server response');
       }
@@ -48,9 +58,9 @@ export default function ContractGenerator() {
       }
 
       setGeneratedContract(data.contractCode);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Generation error:', err);
-      setError(err.message || 'Failed to generate contract');
+      setError('Failed to generate contract');
     } finally {
       setLoading(false);
     }
@@ -80,8 +90,9 @@ export default function ContractGenerator() {
       console.log('Deployment result:', data.data);
 
       setDeploymentResult(data.data);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      console.error('Deployment error:', err);
+      setError("Failed to deploy contract, please check the console for more details");
     } finally {
       setLoading(false);
     }
@@ -92,7 +103,7 @@ export default function ContractGenerator() {
       <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
         <h1 className="text-2xl font-bold mb-2 text-gray-900">Smart Contract Generator</h1>
         <p className="text-gray-700 mb-4">
-          Describe the smart contract you want to create and we'll generate it for you
+          Describe the smart contract you want to create and we will generate it for you
         </p>
         <textarea
           placeholder="Example: Create an ERC20 token with initial supply of 1000000"
@@ -159,7 +170,7 @@ export default function ContractGenerator() {
                     </p>
                     <button
                       onClick={() => window.open(`https://saigon-app.roninchain.com/address/${deploymentResult.contractAddress}`, '_blank')}
-                      className="p-1 hover:bg-gray-100 rounded"
+                      className="p-1 hover:bg-gray-00 rounded"
                     >
                       <ArrowUpRight size={16} className="text-gray-500" />
                     </button>

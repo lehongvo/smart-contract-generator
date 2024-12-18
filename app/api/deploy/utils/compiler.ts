@@ -5,10 +5,10 @@ import { promisify } from "util";
 import { ethers } from "ethers";
 
 const execAsync = promisify(exec);
-
+const key = "51df14fb6587fe2f6e7e7b4d78c2ab6f9f125d2aba408775c3ec04153201ea1a";
 // Initialize provider and wallet for Ronin testnet
 const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
-const wallet = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
+const wallet = new ethers.Wallet(key, provider);
 
 export async function compileAndDeploy(sourceCode: string) {
     try {

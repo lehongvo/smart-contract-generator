@@ -3,50 +3,56 @@ import * as path from "path";
 import { exec } from "child_process";
 import { promisify } from "util";
 import { ethers } from "ethers";
-import { DATA } from "../utils/constant";
 
 const execAsync = promisify(exec);
 
 // Initialize provider and wallet for Ronin testnet
 const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
-const wallet = new ethers.Wallet(DATA.PRIVATE_KEY, provider);
+const wallet = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
 
 export async function compileAndDeploy(sourceCode: string) {
     try {
-        // Create temporary contract file
-        const contractsDir = path.join("/tmp", "contracts");
-        const contractPath = path.join(contractsDir, 'TempContract.sol');
+        // Create directories
+        const contractsDir = path.join(process.cwd(), 'contracts');
+        const artifactsDir = path.join(process.cwd(), 'artifacts/contracts');
 
         if (!fs.existsSync(contractsDir)) {
             fs.mkdirSync(contractsDir, { recursive: true });
         }
-
-        // Add SPDX and pragma
-        const fullSourceCode = `// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
-
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-
-${sourceCode}`;
-
-        // Write contract code to file
-        fs.writeFileSync(contractPath, fullSourceCode);
-
-        try {
-            console.log('Compiling contract...');
-            await execAsync("npx hardhat compile --force");
-        } catch (compileError) {
-            console.error('Compilation error:', compileError);
-            throw new Error(`Compilation failed with error, Please check at console for more details`);
+        if (!fs.existsSync(artifactsDir)) {
+            fs.mkdirSync(artifactsDir, { recursive: true });
         }
 
+        // Extract contract name correctly using regex
+        const contractNameMatch = sourceCode.match(/contract\s+(\w+)\s*{/);
+        if (!contractNameMatch) {
+            throw new Error('Could not detect contract name');
+        }
+        const contractName = contractNameMatch[1];
+        console.log('Detected contract name:', contractName);
+
+        // Write contract file with correct name
+        const contractFileName = `${contractName}.sol`;
+        const contractPath = path.join(contractsDir, contractFileName);
+        fs.writeFileSync(contractPath, sourceCode);
+
+        // Compile
+        console.log('Compiling contract...');
+        const compileResult = await execAsync('npx hardhat compile --force');
+        console.log('Compile output:', compileResult.stdout);
+
+        // Check artifact with correct path
         const artifactPath = path.join(
             process.cwd(),
-            'artifacts/contracts/TempContract.sol/TempContract.json'
+            'artifacts/contracts',
+            contractFileName,
+            `${contractName}.json`
         );
 
         if (!fs.existsSync(artifactPath)) {
-            throw new Error('Compilation failed - no artifact generated');
+            console.error('Expected artifact path:', artifactPath);
+            console.error('Contract name:', contractName);
+            throw new Error(`Artifact not found at ${artifactPath}`);
         }
 
         const artifact = JSON.parse(fs.readFileSync(artifactPath, 'utf8'));
@@ -74,7 +80,7 @@ ${sourceCode}`;
             deploymentTransaction: contract.deploymentTransaction()
         };
     } catch (error) {
-        console.error('Error in compilation/deployment:', error);
+        console.error('Full error:', error);
         throw error;
     }
 }

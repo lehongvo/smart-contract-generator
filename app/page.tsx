@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
+import { ArrowUpRight } from 'lucide-react';
 
 export default function ContractGenerator() {
   const [prompt, setPrompt] = useState('');
@@ -20,6 +21,8 @@ export default function ContractGenerator() {
       setGeneratedContract('');
       setDeploymentResult(null);
 
+      console.log('Sending request to /api/generate');
+
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: {
@@ -28,12 +31,22 @@ export default function ContractGenerator() {
         body: JSON.stringify({ message: prompt }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || errorData.details || 'Failed to generate contract');
+      console.log('Response status:', response.status);
+      const responseText = await response.text();
+      console.log('Response text:', responseText);
+
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {
+        console.error('Failed to parse response:', responseText);
+        throw new Error('Invalid server response');
       }
 
-      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || data.details || 'Failed to generate contract');
+      }
+
       setGeneratedContract(data.contractCode);
     } catch (err: any) {
       console.error('Generation error:', err);
@@ -63,6 +76,8 @@ export default function ContractGenerator() {
       if (!response.ok) {
         throw new Error(data.error || data.details || 'Failed to deploy contract');
       }
+
+      console.log('Deployment result:', data.data);
 
       setDeploymentResult(data.data);
     } catch (err: any) {
@@ -134,11 +149,49 @@ export default function ContractGenerator() {
         <div className="space-y-6">
           <div className="bg-white rounded-lg shadow-lg p-6">
             <h2 className="text-xl font-bold mb-4 text-gray-900">Deployment Details</h2>
-            <div className="space-y-2 text-gray-900">
-              <p><strong>Contract Address:</strong> {deploymentResult.contractAddress}</p>
-              <p><strong>Transaction Hash:</strong> {deploymentResult.deploymentTransaction.hash}</p>
-              <p><strong>Gas Limit:</strong> {deploymentResult.deploymentTransaction.gasLimit}</p>
-              <p><strong>Gas Price:</strong> {deploymentResult.deploymentTransaction.gasPrice}</p>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="font-medium text-sm text-gray-900">Contract Address: {deploymentResult.contractAddress}</p>
+                  <div className="flex items-center space-x-2">
+                    <p className="font-mono text-sm text-blue-600 truncate text-c">
+                      {deploymentResult.address}
+                    </p>
+                    <button
+                      onClick={() => window.open(`https://saigon-app.roninchain.com/address/${deploymentResult.contractAddress}`, '_blank')}
+                      className="p-1 hover:bg-gray-100 rounded"
+                    >
+                      <ArrowUpRight size={16} className="text-gray-500" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <p className="font-medium text-sm text-gray-600">Transaction Hash</p>
+                <div className="flex items-center space-x-2">
+                  <p className="font-mono text-sm text-blue-600 truncate">
+                    {deploymentResult.deploymentTransaction.hash}
+                  </p>
+                  <button
+                    onClick={() => window.open(`https://saigon-app.roninchain.com/tx/${deploymentResult.deploymentTransaction.hash}`, '_blank')}
+                    className="p-1 hover:bg-gray-100 rounded"
+                  >
+                    <ArrowUpRight size={16} className="text-gray-500" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <p className="font-medium text-sm text-gray-600">Gas Limit</p>
+                  <p className="font-mono text-sm  text-gray-900">{deploymentResult.deploymentTransaction.gasLimit}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="font-medium text-sm text-gray-600">Gas Price</p>
+                  <p className="font-mono text-sm  text-gray-900">{deploymentResult.deploymentTransaction.gasPrice}</p>
+                </div>
+              </div>
             </div>
           </div>
 

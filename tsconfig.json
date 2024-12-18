@@ -29,8 +29,9 @@
     ".next/types/**/*.ts",
     "./scripts",
     "./test",
-    "./typechain"
+    "./typechain",
+    "hardhat.config.cjs"
   ],
-  "files": ["./hardhat.config.ts"],
+  "files": ["hardhat.config.cjs"],
   "exclude": ["node_modules"]
 }

@@ -1,4 +1,3 @@
-// app/api/deploy/utils/compiler.ts
 import * as fs from "fs";
 import * as path from "path";
 import { exec } from "child_process";
@@ -8,7 +7,7 @@ import { ethers } from "ethers";
 const execAsync = promisify(exec);
 
 // Initialize provider and wallet for Ronin testnet
-const provider = new ethers.providers.JsonRpcProvider(process.env.RPC_URL);
+const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
 const wallet = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
 
 export async function compileAndDeploy(sourceCode: string) {
@@ -32,12 +31,12 @@ ${sourceCode}`;
         // Write contract code to file
         fs.writeFileSync(contractPath, fullSourceCode);
 
-        // Run Hardhat compile command
-        console.log('Compiling contract...');
         try {
+            console.log('Compiling contract...');
             await execAsync('npx hardhat compile');
         } catch (compileError) {
-            throw new Error(`Compilation failed: ${compileError}`);
+            console.error('Compilation error:', compileError);
+            throw new Error(`Compilation failed: ${compileError.message}`);
         }
 
         const artifactPath = path.join(
@@ -51,7 +50,7 @@ ${sourceCode}`;
 
         const artifact = JSON.parse(fs.readFileSync(artifactPath, 'utf8'));
 
-        // Deploy using ethers
+        // Deploy using ethers v6
         console.log('Deploying contract...');
         const factory = new ethers.ContractFactory(
             artifact.abi,
@@ -60,16 +59,18 @@ ${sourceCode}`;
         );
 
         const contract = await factory.deploy();
-        await contract.deployed();
+        await contract.waitForDeployment();
 
         // Clean up
         fs.unlinkSync(contractPath);
 
+        const deployedAddress = await contract.getAddress();
+
         return {
-            address: contract.address,
+            address: deployedAddress,
             abi: artifact.abi,
             bytecode: artifact.bytecode,
-            deploymentTransaction: contract.deployTransaction
+            deploymentTransaction: contract.deploymentTransaction()
         };
     } catch (error) {
         console.error('Error in compilation/deployment:', error);

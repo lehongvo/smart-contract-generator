@@ -1,4 +1,5 @@
 require("@nomiclabs/hardhat-ethers");
+import { DATA } from "./app/api/deploy/utils/constant";
 
 module.exports = {
     solidity: {
@@ -13,7 +14,7 @@ module.exports = {
     networks: {
         ronin_testnet: {
             url: process.env.RPC_URL || "https://saigon-testnet.roninchain.com/rpc",
-            accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : []
+            accounts: [DATA.PRIVATE_KEY]
         }
     }
 };

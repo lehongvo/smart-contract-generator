@@ -3,12 +3,13 @@ import * as path from "path";
 import { exec } from "child_process";
 import { promisify } from "util";
 import { ethers } from "ethers";
+import { DATA } from "../utils/constant";
 
 const execAsync = promisify(exec);
 
 // Initialize provider and wallet for Ronin testnet
 const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
-const wallet = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
+const wallet = new ethers.Wallet(DATA.PRIVATE_KEY, provider);
 
 export async function compileAndDeploy(sourceCode: string) {
     try {

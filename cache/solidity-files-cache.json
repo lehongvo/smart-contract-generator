@@ -1,45 +1,6 @@
 {
   "_format": "hh-sol-cache-2",
   "files": {
-    "/Users/user/Desktop/my-chat-bot/contracts/TempContract.sol": {
-      "lastModificationDate": 1734500762417,
-      "contentHash": "31fa3ba726b4598420a49b775439aa0e",
-      "sourceName": "contracts/TempContract.sol",
-      "solcConfig": {
-        "version": "0.8.19",
-        "settings": {
-          "optimizer": {
-            "enabled": true,
-            "runs": 200
-          },
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [
-        "@openzeppelin/contracts/token/ERC20/ERC20.sol",
-        "@openzeppelin/contracts/token/ERC20/ERC20.sol"
-      ],
-      "versionPragmas": [
-        "^0.8.19",
-        "^0.8.0"
-      ],
-      "artifacts": [
-        "TempContract"
-      ]
-    },
     "/Users/user/Desktop/my-chat-bot/node_modules/@openzeppelin/contracts/token/ERC20/ERC20.sol": {
       "lastModificationDate": 1734491440496,
       "contentHash": "3ae5166c6827a9cf1a7a462d1632b464",

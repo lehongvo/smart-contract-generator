@@ -14,13 +14,12 @@ const wallet = new ethers.Wallet(DATA.PRIVATE_KEY, provider);
 export async function compileAndDeploy(sourceCode: string) {
     try {
         // Create temporary contract file
-        const contractsDir = path.join(process.cwd(), 'contracts');
+        const contractsDir = '/tmp/contracts';
         const contractPath = path.join(contractsDir, 'TempContract.sol');
 
         if (!fs.existsSync(contractsDir)) {
             fs.mkdirSync(contractsDir, { recursive: true });
         }
-
         // Add SPDX and pragma
         const fullSourceCode = `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;

@@ -14,7 +14,7 @@ const wallet = new ethers.Wallet(DATA.PRIVATE_KEY, provider);
 export async function compileAndDeploy(sourceCode: string) {
     try {
         // Create temporary contract file
-        const contractsDir = path.join(process.cwd(), 'contracts');
+        const contractsDir = path.join("/tmp", "contracts");
         const contractPath = path.join(contractsDir, 'TempContract.sol');
 
         if (!fs.existsSync(contractsDir)) {
@@ -34,7 +34,7 @@ ${sourceCode}`;
 
         try {
             console.log('Compiling contract...');
-            await execAsync('npx hardhat compile');
+            await execAsync("npx hardhat compile --force");
         } catch (compileError) {
             console.error('Compilation error:', compileError);
             throw new Error(`Compilation failed with error, Please check at console for more details`);

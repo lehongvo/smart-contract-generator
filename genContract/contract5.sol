@@ -332,12 +332,6 @@ contract Discount is IDiscount, Ownable, Pausable, ReentrancyGuard, Initializabl
 
 }
 
-// END PART 1
-
-Here is PART 2 of the smart contract implementation:
-
-// BEGIN PART 2
-
     /**
      * @dev Initializes discount contract with dependencies
      * @param oracle Oracle contract for price/discount data

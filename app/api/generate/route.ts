@@ -1,17 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { BedrockRuntimeClient, InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
 
-// Define interfaces for response types
-interface ContentItem {
-    type: string;
-    text: string;
-}
-
-interface BedrockResponse {
-    type: string;
-    content?: ContentItem[];
-}
-
 interface ContractInput {
     name?: string;
     type?: "ERC20" | "ERC721";
@@ -90,7 +79,7 @@ const client = new BedrockRuntimeClient({
     }
 });
 
-async function generateWithBedrock(message: string, systemPrompt: string, part: number = 1, totalParts: number = 5) {
+async function generateWithBedrock(message: string, systemPrompt: string, part: number = 1, totalParts: number = 3) {
     const input = {
         modelId: "anthropic.claude-3-5-sonnet-20240620-v1:0",
         contentType: "application/json",
@@ -111,14 +100,8 @@ IMPORTANT: End with a comment saying "// END PART 1"` : ''}
 ${part === 2 ? `PART 2: Core interface functions and main business logic
 IMPORTANT: Start with "// BEGIN PART 2" and end with "// END PART 2"` : ''}
 
-${part === 3 ? `PART 3: Helper functions for core business logic
-IMPORTANT: Start with "// BEGIN PART 3" and end with "// END PART 3"` : ''}
-
-${part === 4 ? `PART 4: Additional utility functions and security features
-IMPORTANT: Start with "// BEGIN PART 4" and end with "// END PART 4"` : ''}
-
-${part === 5 ? `PART 5: Optimization functions and advanced features
-IMPORTANT: Start with "// BEGIN PART 5"` : ''}
+${part === 3 ? `PART 3: Helper functions and remaining implementation
+IMPORTANT: Start with "// BEGIN PART 3"` : ''}
 
 ${systemPrompt}\n\n${message}`
                         }
@@ -133,9 +116,10 @@ ${systemPrompt}\n\n${message}`
     try {
         const command = new InvokeModelCommand(input);
         const response = await client.send(command);
-        const responseBody = JSON.parse(new TextDecoder().decode(response.body)) as BedrockResponse;
+        const responseBody = JSON.parse(new TextDecoder().decode(response.body));
+
         if (responseBody.content && Array.isArray(responseBody.content)) {
-            return responseBody.content.map((item: ContentItem) => item.text).join("\n");
+            return responseBody.content.map(item => item.text).join("\n");
         }
         return responseBody;
     } catch (error) {

@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { BedrockRuntimeClient, InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
 
+// Define interfaces for response types
+interface ContentItem {
+    type: string;
+    text: string;
+}
+
+interface BedrockResponse {
+    type: string;
+    content?: ContentItem[];
+}
+
 interface ContractInput {
     name?: string;
     type?: "ERC20" | "ERC721";
@@ -122,10 +133,9 @@ ${systemPrompt}\n\n${message}`
     try {
         const command = new InvokeModelCommand(input);
         const response = await client.send(command);
-        const responseBody = JSON.parse(new TextDecoder().decode(response.body));
-
+        const responseBody = JSON.parse(new TextDecoder().decode(response.body)) as BedrockResponse;
         if (responseBody.content && Array.isArray(responseBody.content)) {
-            return responseBody.content.map(item => item.text).join("\n");
+            return responseBody.content.map((item: ContentItem) => item.text).join("\n");
         }
         return responseBody;
     } catch (error) {

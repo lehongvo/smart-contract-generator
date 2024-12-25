@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
+import { BedrockRuntimeClient, InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
 
 interface ContractInput {
     name?: string;
@@ -64,16 +64,59 @@ contract ${input.name || 'Token'} is ${this.getInheritance(input)} {
 
     private getInheritance(input: ContractInput): string {
         const inheritance = ['ERC20', 'Ownable', 'ReentrancyGuard'];
-
         if (input.features?.security?.pausable) inheritance.push('Pausable');
-
         return inheritance.join(', ');
     }
 }
 
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
+// Initialize AWS Bedrock client
+const client = new BedrockRuntimeClient({
+    region: "ap-northeast-1",
+    credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+        sessionToken: process.env.AWS_SESSION_TOKEN
+    }
 });
+
+async function generateWithBedrock(message: string, systemPrompt: string) {
+    const input = {
+        modelId: "anthropic.claude-3-5-sonnet-20240620-v1:0",
+        contentType: "application/json",
+        accept: "application/json",
+        body: JSON.stringify({
+            anthropic_version: "bedrock-2023-05-31",
+            messages: [
+                {
+                    role: "user",
+                    content: [
+                        {
+                            type: "text",
+                            text: `${systemPrompt}\n\n${message}`
+                        }
+                    ]
+                }
+            ],
+            max_tokens: 10000,
+            temperature: 0.7
+        })
+    };
+
+    try {
+        const command = new InvokeModelCommand(input);
+        const response = await client.send(command);
+        const responseBody = JSON.parse(new TextDecoder().decode(response.body));
+
+        // Handle the response based on Claude's response format
+        if (responseBody.content && Array.isArray(responseBody.content)) {
+            return responseBody.content.map(item => item.text).join("\n");
+        }
+        return responseBody;
+    } catch (error) {
+        console.error("Error calling Bedrock:", error);
+        throw error;
+    }
+}
 
 export async function POST(req: NextRequest) {
     try {
@@ -86,7 +129,6 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // Check if message is related to Discount contract
         if (message.toLowerCase().includes('discount')) {
             const interfaceTemplate = `// SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.10;
@@ -97,83 +139,83 @@ pragma solidity ^0.8.10;
  */
 interface IOracle {
     /**
-     * @dev Adds a new oracle data provider to the system
-     * @param oracleId Unique identifier for the oracle (must be > 0), used to track this provider
-     * @param invoker Address that will be authorized to update oracle values and must be valid
-     * @notice Requires admin privileges to execute
-     * @notice OracleId must not already exist in the system
-     * @notice Invoker address cannot be zero address
-     */
-    function addOracle(uint256 oracleId, address invoker) external;
+ * @dev Adds a new oracle data provider to the system
+ * @param oracleId Unique identifier for the oracle (must be > 0), used to track this provider
+ * @param invoker Address that will be authorized to update oracle values and must be valid
+ * @notice Requires admin privileges to execute
+ * @notice OracleId must not already exist in the system
+ * @notice Invoker address cannot be zero address
+ */
+function addOracle(uint256 oracleId, address invoker) external;
 
-    /**
-     * @dev Removes an existing oracle from the system
-     * @param oracleId Identifier of oracle to be deleted
-     * @notice Only callable by system admin
-     * @notice Oracle must exist and be active
-     * @notice Cleans up all associated data for this oracle
-     */
-    function deleteOracle(uint256 oracleId) external;
+/**
+ * @dev Removes an existing oracle from the system
+ * @param oracleId Identifier of oracle to be deleted
+ * @notice Only callable by system admin
+ * @notice Oracle must exist and be active
+ * @notice Cleans up all associated data for this oracle
+ */
+function deleteOracle(uint256 oracleId) external;
 
-    /**
-     * @dev Sets a single key-value pair in the oracle
-     * @param oracleId Target oracle to update
-     * @param key Data identifier (e.g., "BTC_PRICE", "DISCOUNT_RATE")
-     * @param value Data value to store
-     * @notice Only authorized invoker can update values
-     * @notice Oracle must be active and registered
-     */
-    function set(uint256 oracleId, bytes32 key, bytes32 value) external;
-    
-    /**
-     * @dev Sets multiple key-value pairs in a single transaction
-     * @param oracleId Oracle instance to update
-     * @param keys Array of data identifiers to update
-     * @param values Array of corresponding values to store
-     * @notice Arrays must be equal length
-     * @notice All values must be valid
-     * @notice More gas efficient than multiple single updates
-     */
-    function setBatch(uint256 oracleId, bytes32[] memory keys, bytes32[] memory values) external;
-    
-    /**
-     * @dev Retrieves current value for a given key
-     * @param oracleId Oracle to query
-     * @param key Data point identifier
-     * @return value Current stored value, 0x0 if not found
-     * @return err Error message if lookup fails
-     */
-    function get(uint256 oracleId, bytes32 key) external view returns (bytes32 value, string memory err);
-    
-    /**
-     * @dev Gets multiple values in a single call
-     * @param oracleId Oracle to query
-     * @param keys Array of data identifiers
-     * @return values Array of current values
-     * @return err Error message if any lookup fails
-     */
-    function getBatch(uint256 oracleId, bytes32[] memory keys) external view returns (bytes32[] memory values, string memory err);
+/**
+ * @dev Sets a single key-value pair in the oracle
+ * @param oracleId Target oracle to update
+ * @param key Data identifier (e.g., "BTC_PRICE", "DISCOUNT_RATE")
+ * @param value Data value to store
+ * @notice Only authorized invoker can update values
+ * @notice Oracle must be active and registered
+ */
+function set(uint256 oracleId, bytes32 key, bytes32 value) external;
 
-    /**
-     * @dev Emitted when a new oracle is added to the system
-     * @param oracleId Identifier of the new oracle
-     * @param invoker Address authorized to update oracle data
-     */
-    event AddOracle(uint256 indexed oracleId, address invoker);
+/**
+ * @dev Sets multiple key-value pairs in a single transaction
+ * @param oracleId Oracle instance to update
+ * @param keys Array of data identifiers to update
+ * @param values Array of corresponding values to store
+ * @notice Arrays must be equal length
+ * @notice All values must be valid
+ * @notice More gas efficient than multiple single updates
+ */
+function setBatch(uint256 oracleId, bytes32[] memory keys, bytes32[] memory values) external;
 
-    /**
-     * @dev Emitted when an oracle is removed from the system
-     * @param oracleId Identifier of the removed oracle
-     */
-    event DeleteOracle(uint256 indexed oracleId);
+/**
+ * @dev Retrieves current value for a given key
+ * @param oracleId Oracle to query
+ * @param key Data point identifier
+ * @return value Current stored value, 0x0 if not found
+ * @return err Error message if lookup fails
+ */
+function get(uint256 oracleId, bytes32 key) external view returns (bytes32 value, string memory err);
 
-    /**
-     * @dev Emitted when oracle data is updated
-     * @param oracleId Oracle being updated
-     * @param key Identifier of the data point
-     * @param value New value being set
-     */
-    event SetOracleValue(uint256 indexed oracleId, bytes32 key, bytes32 value);
+/**
+ * @dev Gets multiple values in a single call
+ * @param oracleId Oracle to query
+ * @param keys Array of data identifiers
+ * @return values Array of current values
+ * @return err Error message if any lookup fails
+ */
+function getBatch(uint256 oracleId, bytes32[] memory keys) external view returns (bytes32[] memory values, string memory err);
+
+/**
+ * @dev Emitted when a new oracle is added to the system
+ * @param oracleId Identifier of the new oracle
+ * @param invoker Address authorized to update oracle data
+ */
+event AddOracle(uint256 indexed oracleId, address invoker);
+
+/**
+ * @dev Emitted when an oracle is removed from the system
+ * @param oracleId Identifier of the removed oracle
+ */
+event DeleteOracle(uint256 indexed oracleId);
+
+/**
+ * @dev Emitted when oracle data is updated
+ * @param oracleId Oracle being updated
+ * @param key Identifier of the data point
+ * @param value New value being set
+ */
+event SetOracleValue(uint256 indexed oracleId, bytes32 key, bytes32 value);
 }
 
 /**
@@ -181,48 +223,48 @@ interface IOracle {
  * @dev Base interface for executing transfers between accounts
  */
 interface ITransferable {
-    /**
-     * @dev Executes a custom transfer between accounts
-     * @param sendAccountId Account initiating the transfer (must be active)
-     * @param fromAccountId Source account for funds (must have sufficient balance)
-     * @param toAccountId Destination account (must be active)
-     * @param amount Number of tokens to transfer (must be > 0)
-     * @param miscValue1 First auxiliary parameter for transfer logic
-     * @param miscValue2 Second auxiliary parameter for transfer logic
-     * @param memo Human readable transfer description/reason
-     * @param traceId Unique identifier for tracking this transaction
-     * @return result True if transfer completed successfully
-     * @notice Validates all accounts exist and are active
-     * @notice Checks sufficient balance in source account
-     */
-    function customTransfer(
-        bytes32 sendAccountId,
-        bytes32 fromAccountId,
-        bytes32 toAccountId,
-        uint256 amount,
-        bytes32 miscValue1,
-        bytes32 miscValue2,
-        string memory memo,
-        bytes32 traceId
-    ) external returns (bool result);
+/**
+ * @dev Executes a custom transfer between accounts
+ * @param sendAccountId Account initiating the transfer (must be active)
+ * @param fromAccountId Source account for funds (must have sufficient balance)
+ * @param toAccountId Destination account (must be active)
+ * @param amount Number of tokens to transfer (must be > 0)
+ * @param miscValue1 First auxiliary parameter for transfer logic
+ * @param miscValue2 Second auxiliary parameter for transfer logic
+ * @param memo Human readable transfer description/reason
+ * @param traceId Unique identifier for tracking this transaction
+ * @return result True if transfer completed successfully
+ * @notice Validates all accounts exist and are active
+ * @notice Checks sufficient balance in source account
+ */
+function customTransfer(
+    bytes32 sendAccountId,
+    bytes32 fromAccountId,
+    bytes32 toAccountId,
+    uint256 amount,
+    bytes32 miscValue1,
+    bytes32 miscValue2,
+    string memory memo,
+    bytes32 traceId
+) external returns (bool result);
 
-    /**
-     * @dev Emitted when a custom transfer is executed
-     * @param sendAccountId Account that initiated the transfer
-     * @param fromAccountId Source account of the funds
-     * @param toAccountId Destination account
-     * @param amount Amount of tokens transferred
-     * @param miscValue1 First auxiliary value used in transfer
-     * @param miscValue2 Second auxiliary value used in transfer
-     */
-    event CustomTransfer(
-        bytes32 sendAccountId,
-        bytes32 fromAccountId,
-        bytes32 toAccountId,
-        uint256 amount,
-        bytes32 miscValue1,
-        bytes32 miscValue2
-    );
+/**
+ * @dev Emitted when a custom transfer is executed
+ * @param sendAccountId Account that initiated the transfer
+ * @param fromAccountId Source account of the funds
+ * @param toAccountId Destination account
+ * @param amount Amount of tokens transferred
+ * @param miscValue1 First auxiliary value used in transfer
+ * @param miscValue2 Second auxiliary value used in transfer
+ */
+event CustomTransfer(
+    bytes32 sendAccountId,
+    bytes32 fromAccountId,
+    bytes32 toAccountId,
+    uint256 amount,
+    bytes32 miscValue1,
+    bytes32 miscValue2
+);
 }
 
 /**
@@ -230,60 +272,56 @@ interface ITransferable {
  * @dev Interface for managing discounts and price reductions
  */
 interface IDiscount is ITransferable {
-    /**
-     * @dev Emitted when a discount is applied to a purchase
-     * @param sendAccountId Account receiving the discount
-     * @param item Identifier of purchased item
-     * @param amount Original price before discount
-     * @param discountedAmount Final price after discount applied
-     */
-    event Discount(bytes32 sendAccountId, bytes32 item, uint256 amount, uint256 discountedAmount);
-    
-    /**
-     * @dev Initializes discount contract with dependencies
-     * @param oracle Oracle contract for price/discount data
-     * @param token Token contract for payment handling
-     * @notice Can only be called once during deployment
-     * @notice Validates oracle and token addresses
-     */
-    function initialize(IOracle oracle, ITransferable token) external;
+/**
+ * @dev Emitted when a discount is applied to a purchase
+ * @param sendAccountId Account receiving the discount
+ * @param item Identifier of purchased item
+ * @param amount Original price before discount
+ * @param discountedAmount Final price after discount applied
+ */
+event Discount(bytes32 sendAccountId, bytes32 item, uint256 amount, uint256 discountedAmount);
 
-    /**
-     * @dev Returns contract version for upgrades
-     * @return Version string in semver format
-     */
-    function version() external pure returns (string memory);
+/**
+ * @dev Initializes discount contract with dependencies
+ * @param oracle Oracle contract for price/discount data
+ * @param token Token contract for payment handling
+ * @notice Can only be called once during deployment
+ * @notice Validates oracle and token addresses
+ */
+function initialize(IOracle oracle, ITransferable token) external;
 
-    /**
-     * @dev Updates oracle instance used for discounts
-     * @param oracleId New oracle ID to use
-     * @notice Only admin can update
-     * @notice Validates oracle exists and is active
-     */
-    function setOracleId(uint256 oracleId) external;
+/**
+ * @dev Returns contract version for upgrades
+ * @return Version string in semver format
+ */
+function version() external pure returns (string memory);
 
-    /**
-     * @dev Gets current oracle ID
-     * @return Currently active oracle identifier
-     */
-    function getOracleId() external view returns (uint256);
+/**
+ * @dev Updates oracle instance used for discounts
+ * @param oracleId New oracle ID to use
+ * @notice Only admin can update
+ * @notice Validates oracle exists and is active
+ */
+function setOracleId(uint256 oracleId) external;
 
-    /**
-     * @dev Calculates discount based on purchase amount and history
-     * @param amount Original purchase amount
-     * @param purchasedCounts Number of previous purchases by account
-     * @return Final discounted amount to charge
-     * @notice Amount must be greater than 0
-     * @notice Uses tiered discount rates based on purchase history
-     */
-    function discount(uint256 amount, uint256 purchasedCounts) external pure returns (uint256);
+/**
+ * @dev Gets current oracle ID
+ * @return Currently active oracle identifier
+ */
+function getOracleId() external view returns (uint256);
+
+/**
+ * @dev Calculates discount based on purchase amount and history
+ * @param amount Original purchase amount
+ * @param purchasedCounts Number of previous purchases by account
+ * @return Final discounted amount to charge
+ * @notice Amount must be greater than 0
+ * @notice Uses tiered discount rates based on purchase history
+ */
+function discount(uint256 amount, uint256 purchasedCounts) external pure returns (uint256);
 }`;
-            const completion = await openai.chat.completions.create({
-                model: "gpt-3.5-turbo",  // Changed from gpt-4o
-                messages: [
-                    {
-                        role: "system",
-                        content: `You are a smart contract developer. Generate a complete implementation of the given interface. 
+
+            const systemPrompt = `You are a smart contract developer. Generate a complete implementation of the given interface. 
 
 REQUIREMENTS:
 1. Must implement ALL interface functions with EXACT signatures 
@@ -314,18 +352,9 @@ ${interfaceTemplate}
 Generate only the implementation contract.
 Do not include the interface definitions in your response.
 Do not use markdown formatting.
-Follow the exact NatSpec documentation style as shown in the interface.`
-                    },
-                    {
-                        role: "user",
-                        content: message
-                    }
-                ],
-                temperature: 0.7,
-                max_tokens: 4000
-            });
+Follow the exact NatSpec documentation style as shown in the interface.`;
 
-            const contractCode = completion.choices[0].message?.content;
+            const contractCode = await generateWithBedrock(message, systemPrompt);
 
             if (!contractCode) {
                 return NextResponse.json(
@@ -335,8 +364,8 @@ Follow the exact NatSpec documentation style as shown in the interface.`
             }
 
             return NextResponse.json({ contractCode });
+
         } else {
-            // Handle other contract types
             let contractInput: ContractInput;
             try {
                 contractInput = JSON.parse(message);
@@ -350,12 +379,7 @@ Follow the exact NatSpec documentation style as shown in the interface.`
             const generator = new OpenZeppelinStyleGenerator();
             const contractTemplate = generator.getContractTemplate(contractInput);
 
-            const completion = await openai.chat.completions.create({
-                model: "gpt-3.5-turbo",  // Changed from gpt-4o-mini
-                messages: [
-                    {
-                        role: "system",
-                        content: `You are a smart contract developer. Generate a complete implementation based on the template and requirements.
+            const systemPrompt = `You are a smart contract developer. Generate a complete implementation based on the template and requirements.
 
 Template:
 ${contractTemplate}
@@ -374,18 +398,9 @@ Requirements:
 
 Generate the complete contract implementation.
 Do not use markdown formatting.
-Include detailed implementation for all functions.`
-                    },
-                    {
-                        role: "user",
-                        content: message
-                    }
-                ],
-                temperature: 0.7,
-                max_tokens: 4000
-            });
+Include detailed implementation for all functions.`;
 
-            const contractCode = completion.choices[0].message?.content;
+            const contractCode = await generateWithBedrock(message, systemPrompt);
 
             if (!contractCode) {
                 return NextResponse.json(

@@ -79,7 +79,7 @@ const client = new BedrockRuntimeClient({
     }
 });
 
-async function generateWithBedrock(message: string, systemPrompt: string) {
+async function generateWithBedrock(message: string, systemPrompt: string, part: number = 1, totalParts: number = 5) {
     const input = {
         modelId: "anthropic.claude-3-5-sonnet-20240620-v1:0",
         contentType: "application/json",
@@ -92,7 +92,24 @@ async function generateWithBedrock(message: string, systemPrompt: string) {
                     content: [
                         {
                             type: "text",
-                            text: `${systemPrompt}\n\n${message}`
+                            text: `Generate PART ${part} of ${totalParts} of the smart contract:
+
+${part === 1 ? `PART 1: Contract declaration, state variables, events, constructor, and modifiers
+IMPORTANT: End with a comment saying "// END PART 1"` : ''}
+
+${part === 2 ? `PART 2: Core interface functions and main business logic
+IMPORTANT: Start with "// BEGIN PART 2" and end with "// END PART 2"` : ''}
+
+${part === 3 ? `PART 3: Helper functions for core business logic
+IMPORTANT: Start with "// BEGIN PART 3" and end with "// END PART 3"` : ''}
+
+${part === 4 ? `PART 4: Additional utility functions and security features
+IMPORTANT: Start with "// BEGIN PART 4" and end with "// END PART 4"` : ''}
+
+${part === 5 ? `PART 5: Optimization functions and advanced features
+IMPORTANT: Start with "// BEGIN PART 5"` : ''}
+
+${systemPrompt}\n\n${message}`
                         }
                     ]
                 }
@@ -107,7 +124,6 @@ async function generateWithBedrock(message: string, systemPrompt: string) {
         const response = await client.send(command);
         const responseBody = JSON.parse(new TextDecoder().decode(response.body));
 
-        // Handle the response based on Claude's response format
         if (responseBody.content && Array.isArray(responseBody.content)) {
             return responseBody.content.map(item => item.text).join("\n");
         }
@@ -116,6 +132,15 @@ async function generateWithBedrock(message: string, systemPrompt: string) {
         console.error("Error calling Bedrock:", error);
         throw error;
     }
+}
+
+// Usage example:
+async function generateFullContract(message: string, systemPrompt: string) {
+    const part1 = await generateWithBedrock(message, systemPrompt, 1);
+    const part2 = await generateWithBedrock(message, systemPrompt, 2);
+    const part3 = await generateWithBedrock(message, systemPrompt, 3);
+
+    return [part1, part2, part3].join('\n\n');
 }
 
 export async function POST(req: NextRequest) {
@@ -354,7 +379,9 @@ Do not include the interface definitions in your response.
 Do not use markdown formatting.
 Follow the exact NatSpec documentation style as shown in the interface.`;
 
-            const contractCode = await generateWithBedrock(message, systemPrompt);
+            console.log('====+>', message, systemPrompt)
+
+            const contractCode = await generateFullContract(message, systemPrompt);
 
             if (!contractCode) {
                 return NextResponse.json(
@@ -400,6 +427,7 @@ Generate the complete contract implementation.
 Do not use markdown formatting.
 Include detailed implementation for all functions.`;
 
+            console.log("=============>", message, systemPrompt);
             const contractCode = await generateWithBedrock(message, systemPrompt);
 
             if (!contractCode) {

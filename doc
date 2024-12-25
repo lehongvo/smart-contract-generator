@@ -1,0 +1,248 @@
+## Công việc ngày hôm nay
+    IN.
+     Add lib bedrock để xử lý API của bedrock
+     Build lên và đầu test prompt với cloude 3.5 của bedrock
+    OUT. 
+        Đã hoàn thành xử lý API của bedrock(DONE)
+        Build lên và đầu test prompt với cloude 3.5 của bedrock(DONE)
+        Test độ hoàn thiện của AI khi gen contract có dúng theo các tiêu chi yêu cầu hay không [Checklist chi tiết cho từng yêu cầu](DONE)
+            Đã gen ra 20 contract và kiểm tra xem nó có đúng theo các tiêu chí yêu cầu hay không(DONE) => check list gửi sau
+        Check prompt form chung cho claudeAI xử lý(IN-PROCESSING)
+            Sau khi test xong, nhận thấy con ClaudeAI hiện tại nó làm tốt nhiệm xử lý gen ra contract theo interface mẫu tốt, nhưng yêu cầu phải prompt theo form là chi tiết hơn
+            ==> compline contract không lỗi (DONE)
+            ==> deploy contract chưa được vì cần có param tuyền vào trong constructor(Xử lý sau)
+            ====> Kêt luận: ClaudeAI đã hoàn thành tốt công việc gen contract theo interface mẫu, nhưng cần phải prompt theo form chi tiết hơn
+
+I: checklist chi tiết cho từng yêu cầu
+Để đánh giá một contract được gen có đúng yêu cầu hay không, tôi sẽ tạo một checklist chi tiết cho từng yêu cầu:
+
+    1. Interface Function Implementation:
+    - [ ] Kiểm tra từng function trong interface, đối chiếu với implementation
+    - [ ] Verify chữ ký hàm khớp chính xác
+    - [ ] Kiểm tra modifier khớp (external/public/view/pure)
+
+    2. Full Code Implementation:
+    - [ ] Mỗi function phải có logic đầy đủ
+    - [ ] Không có TODO hoặc comment placeholder
+    - [ ] Code thực thi được và có ý nghĩa
+
+    3. NatSpec Documentation:
+    - [ ] Mỗi function có đầy đủ NatSpec (@dev, @param, @return, @notice)
+    - [ ] Style NatSpec giống interface
+    - [ ] Documentation rõ ràng và hữu ích
+
+    4. Events:
+    - [ ] Tất cả events trong interface được emit
+    - [ ] Events được emit tại đúng thời điểm
+    - [ ] Parameters của event khớp với định nghĩa
+
+    5. Parameter Names & Returns:
+    - [ ] Tên parameters giống hệt interface
+    - [ ] Return values khớp với interface
+    - [ ] Không có sự thay đổi kiểu dữ liệu
+
+    6. Helper Functions:
+    - [ ] Có các helper functions hỗ trợ logic chính
+    - [ ] Helper functions được tổ chức hợp lý
+    - [ ] Visibility được set phù hợp (internal/private)
+
+    7. SafeMath Usage:
+    - [ ] Sử dụng SafeMath cho tất cả phép tính
+    - [ ] Không có phép tính trực tiếp
+    - [ ] Import và using SafeMath đúng cách
+
+    8. Parameter Validation:
+    - [ ] Check zero address
+    - [ ] Validate positive amounts
+    - [ ] Array length validation
+    - [ ] OracleId validation
+    - [ ] AccountId empty check
+    - [ ] Balance checks
+    - [ ] Các validation khác theo context
+
+    9. Validation Messages:
+    - [ ] Mỗi require có message rõ ràng
+    - [ ] Custom error được định nghĩa và sử dụng
+    - [ ] Messages mô tả chính xác lỗi
+
+    10. Error Messages:
+    - [ ] Error messages chi tiết và hữu ích
+    - [ ] Messages theo format nhất quán
+    - [ ] Error handling đầy đủ
+
+    11. Gas Optimization:
+    - [ ] Sử dụng memory/storage đúng cách
+    - [ ] Tối ưu loop và array access
+    - [ ] Caching state variables khi cần
+
+    12. Code Quality & Length:
+    - [ ] Ít nhất 800 lines có nghĩa
+    - [ ] Code có tổ chức tốt
+    - [ ] Không có code dư thừa
+
+    13. State Change Events:
+    - [ ] Events cho mọi state change quan trọng
+    - [ ] Event parameters đầy đủ
+    - [ ] Events được emit tại đúng điểm
+
+    14. Access Control:
+    - [ ] Admin functions có modifier phù hợp
+    - [ ] Role-based access control
+    - [ ] Ownership management
+
+    15. Upgrade Patterns:
+    - [ ] Implement proxy pattern nếu cần
+    - [ ] Version control
+    - [ ] Data migration logic
+
+    Để sử dụng checklist này:
+    1. Check từng mục trong list
+    2. Đánh dấu Pass/Fail và ghi chú issues
+    3. Tính tổng số điểm đạt được
+    4. Quyết định accept/reject dựa trên kết quả
+
+    Bạn muốn tôi đánh giá một contract cụ thể theo checklist này không?
+
+II: check prompt form chung cho claudeAI xử lý
+const systemPrompt = `You are an expert Solidity developer specializing in TPOOPI-compliant smart contract development. Generate a complete implementation based on the provided interface.
+
+REQUIREMENTS:
+
+TESTABLE:
+1. Implement comprehensive unit testing support:
+   - Add view functions for state inspection
+   - Include internal functions with test hooks
+   - Create clear state validation functions
+   - Add simulation/dry-run capabilities
+2. Provide mock implementations for testing
+3. Add debugging support:
+   - Detailed event logging
+   - State transition tracking
+   - Error tracing capabilities
+4. Include test coverage considerations:
+   - Branch coverage hooks
+   - State transition testing
+   - Edge case handling
+
+PERFORMANT:
+1. Gas optimization techniques:
+   - Optimize storage layout and packing
+   - Use appropriate data types
+   - Implement batching for operations
+   - Cache frequently accessed storage
+2. Memory management:
+   - Efficient memory vs storage usage
+   - Optimize array handling
+   - Minimize copying of data
+3. Computation optimization:
+   - Use unchecked blocks where safe
+   - Implement efficient loops
+   - Optimize function routing
+4. State access patterns:
+   - Minimize storage reads/writes
+   - Use events for historical data
+   - Implement efficient lookups
+
+OWNABLE:
+1. Access control implementation:
+   - Role-based permissions (RBAC)
+   - Multi-signature support
+   - Time-locked operations
+2. Administrative functions:
+   - Emergency controls
+   - Configuration management
+   - State recovery mechanisms
+3. Ownership transfer:
+   - Secure ownership transfer
+   - Two-step transfer process
+   - Ownership validation
+4. Permission management:
+   - Role assignment/revocation
+   - Permission hierarchies
+   - Access control modifiers
+
+OBSERVABLE:
+1. Event system:
+   - Comprehensive event logging
+   - Indexed parameters for filtering
+   - Detailed state change tracking
+2. Monitoring capabilities:
+   - Health check endpoints
+   - State validation functions
+   - Activity tracking
+3. Transparency features:
+   - Public state readers
+   - Operation history
+   - Configuration visibility
+4. Debugging support:
+   - Detailed error reporting
+   - State inspection tools
+   - Transaction tracing
+
+PAUSABLE:
+1. Circuit breaker pattern:
+   - Emergency pause
+   - Selective feature suspension
+   - Gradual shutdown
+2. State management:
+   - Pause state validation
+   - State transition control
+   - Recovery procedures
+3. Access control:
+   - Pause authorization
+   - Unpause permissions
+   - Emergency controls
+4. Operation handling:
+   - Paused state behavior
+   - Partial operation support
+   - State preservation
+
+INTEROPERABLE:
+1. External interactions:
+   - Safe external calls
+   - Standardized interfaces
+   - Cross-contract communication
+2. Integration support:
+   - Version compatibility
+   - Upgrade mechanisms
+   - Migration support
+3. Standards compliance:
+   - ERC standards
+   - Protocol compatibility
+   - Industry best practices
+4. Extension mechanisms:
+   - Plugin architecture
+   - Hook points
+   - Custom implementations
+
+IMPLEMENTATION REQUIREMENTS:
+1. Must implement ALL interface functions with EXACT signatures 
+2. Follow OpenZeppelin best practices and patterns
+3. Use latest Solidity security practices
+4. Include comprehensive NatSpec documentation matching interface style
+5. Must emit ALL events defined in the interface at appropriate points
+6. Create appropriate internal logic and helper functions
+7. Use SafeMath for all arithmetic operations
+8. Parameter validation requirements:
+   - Check for zero address where addresses are used
+   - Validate that amounts are greater than zero
+   - Verify array lengths match when multiple arrays are provided
+   - Ensure IDs exist before operations
+   - Check if amounts don't exceed balances
+9. Add proper validation checks with require statements and clear error messages
+10. Follow memory/storage best practices for gas optimization
+11. Include events for all major state changes
+12. Add access control for admin functions
+13. Implement secure upgrade patterns if needed
+
+INTERFACE TO IMPLEMENT:
+${interfaceTemplate}
+
+Generate only the implementation contract.
+Do not include the interface definitions in your response.
+Do not use markdown formatting.
+Follow the exact NatSpec documentation style as shown in the interface.`;
+
+### NOTE:
+    1: interfaceTemplate là interface của user nhập
+    2: Để tạo contract implementation, nó sẽ sử dụng interface này và tạo một contract mới với các hàm đã được implement đầy đủ theo yêu cầu.

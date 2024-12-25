@@ -111,7 +111,9 @@ interface IDiscount is ITransferable {
     function discount(
         uint256 amount,
         uint256 purchasedCounts
-    ) external pure returns (uint256);
+    ) external pure returns (uint256) {
+        // 
+    };
 
     /**
      * @dev Custom transfer function (inherited from ITransferable)
